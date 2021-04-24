@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router';
 import styled from "styled-components";
@@ -15,25 +15,47 @@ const Header = () => {
 
     const { authData } = useSelector(state => state.auth);
 
+    useEffect(() => {
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                setUser(user);
+                history.push("/home");
+            }
+        });
+    }, [authData?.name]);
 
     const handleAuth = () => {
-        auth.signInWithPopup(provider).then((res) => {
-            const { user } = res;
-            const { displayName, email, photoURL } = user;
-            dispatch(authActions.googleSignIn({
-                name: displayName,
-                email: email,
-                photo: photoURL,
-                history: history
-            }));
-        }).catch((error) => {
-            alert(error.message);
-        });
+        if(authData === null) {
+            auth.signInWithPopup(provider).then((res) => {
+                const { user } = res;
+                setUser(user);
+            }).catch((error) => {
+                alert(error.message);
+            });
+        } else if (authData) {
+            auth.signOut().then(() => {
+                dispatch(authActions.googleSignOut());
+                history.push("/");
+            }).catch((error) => {
+                alert(error.message);
+            });
+        }
+    }
+
+    const setUser = (user) => {
+
+        const { displayName, email, photoURL } = user;
+
+        dispatch(authActions.googleSignIn({
+            name: displayName,
+            email: email,
+            photo: photoURL,
+        }));
     }
 
     return (
         <Nav>
-            <Logo>
+            <Logo href="/">
                 <img src="/images/logo.svg" alt="Disney+" />
             </Logo>
             {
@@ -65,7 +87,13 @@ const Header = () => {
                             <span>SERIES</span>
                         </a>
                     </NavMenu>
-                    <UserImage src={authData.photo} alt={authData.name} />
+                    <SignOut>
+                        <UserImage src={authData.photo} alt={authData.name} />
+                        <DropDown>
+                            <span onClick={handleAuth}>Sign out</span>
+                            {/* <span>Profile</span> */}
+                        </DropDown>
+                    </SignOut>
                 </>
             }
         </Nav>
@@ -184,6 +212,49 @@ const Login = styled.a`
 
 const UserImage = styled.img`
     height: 100%;
+`;
+
+const DropDown = styled.div`
+  position: absolute;
+  top: 48px;
+  right: 0px;
+  background: rgb(19, 19, 19);
+  border: 1px solid rgba(151, 151, 151, 0.34);
+  border-radius: 4px;
+  box-shadow: rgb(0 0 0 / 50%) 0px 0px 18px 0px;
+  padding: 10px;
+  font-size: 14px;
+  letter-spacing: 3px;
+  width: 100px;
+  opacity: 0;
+  /* display: flex; */
+  /* flex-direction: column; */
+
+  /* span {
+    border-bottom: 1px solid #f9f9f9;
+    padding: 8px 0px;
+  } */
+`;
+
+const SignOut = styled.div`
+  position: relative;
+  height: 48px;
+  width: 48px;
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  ${UserImage} {
+    border-radius: 50%;
+    width: 100%;
+    height: 100%;
+  }
+  &:hover {
+    ${DropDown} {
+      opacity: 1;
+      transition-duration: 1s;
+    }
+  }
 `;
 
 export default Header;
